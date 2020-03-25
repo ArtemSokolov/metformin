@@ -47,3 +47,5 @@ dgl <- edgeR::topTags( gf, nrow(X1) ) %>% as.data.frame %>%
     rownames_to_column( "Gene" ) %>% as_tibble %>%
     filter( FDR < 0.05 ) %>% pull( Gene )
 
+## Write to file
+cat( dgl, file="metformin-dgl.txt", sep="\n" )
