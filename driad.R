@@ -25,15 +25,14 @@ XP <- XX %>% select( -Filename ) %>%
 
 ## Load the DGL
 dgl <- scan("metformin-dgl.txt", what=character())
+f <- function(.x, .y ) evalGeneSets( list(Metformin=dgl), .x, .y, 100 )
 
 ## Evaluate the gene set across all datasets / tasks
 future::plan( future::multiprocess )
 set.seed(100)
 fo <- furrr::future_options( seed=TRUE )
 RR <- XP %>%
-    mutate( Result = furrr::future_map2(Data, Pairs,
-                                        ~evalGeneSets( list(Metformin=dgl), .x, .y, 100 )
-                                        .options=fo) )
+    mutate( Result = furrr::future_map2(Data, Pairs, f, .options=fo) )
 
 ## Finalize results and write to file
 RS <- RR %>% select( -Data, -Pairs ) %>% unnest( Result )
