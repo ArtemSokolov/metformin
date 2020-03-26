@@ -43,9 +43,10 @@ dl <- edgeR::estimateDisp( dl, mmx )
 ## Compute differential expression and
 ##   identify Metformin's drug-associated gene list (DGL)
 gf <- edgeR::glmFit( dl, mmx ) %>% edgeR::glmLRT( coef = 2 )
-dgl <- edgeR::topTags( gf, nrow(X1) ) %>% as.data.frame %>%
-    rownames_to_column( "Gene" ) %>% as_tibble %>%
-    filter( FDR < 0.05 ) %>% pull( Gene )
+RR <- edgeR::topTags( gf, nrow(X1) ) %>% as.data.frame %>%
+    rownames_to_column( "Gene" ) %>% as_tibble
+dgl <- RR %>% filter( FDR < 0.05 ) %>% pull( Gene )
 
-## Write to file
+## Write to file(s)
+write_csv( RR, "metformin-dfx.csv" )
 cat( dgl, file="metformin-dgl.txt", sep="\n" )
