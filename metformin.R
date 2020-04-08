@@ -11,7 +11,7 @@ X <- syn("syn21763099") %>% read_tsv2
 Y <- syn("syn21781943") %>% read_csv2
 
 ## Identify protein-coding genes
-GM <- read_csv2( "GRCh38.94.genemap.csv" ) %>%
+GM <- read_csv2( "data/GRCh38.94.genemap.csv" ) %>%
     filter( gene_biotype == "protein_coding" )
 
 ## Standardizes Metformin / Control annotations
@@ -48,5 +48,5 @@ RR <- edgeR::topTags( gf, nrow(X1) ) %>% as.data.frame %>%
 dgl <- RR %>% filter( FDR < 0.05 ) %>% pull( Gene )
 
 ## Write to file(s)
-write_csv( RR, "metformin-dfx.csv" )
-cat( dgl, file="metformin-dgl.txt", sep="\n" )
+write_csv( RR, "results/metformin-dfx.csv" )
+cat( dgl, file="results/metformin-dgl.txt", sep="\n" )
