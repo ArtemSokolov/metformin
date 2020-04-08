@@ -98,3 +98,20 @@ c2cp <- DRIAD::read_gmt( "data/c2.cp.v7.0.symbols.gmt" )
 GSEA <- map(W, ~fgsea::fgsea(c2cp, .x, 1e5)) %>%
     map( as_tibble )
 saveRDS( GSEA, file="results/gsea.rds" )
+
+## Generate dfx sheets for an xlsx file
+snm <- map_chr( dich, str_flatten, "-" )
+S1 <- map( DFX, filter, FDR < 0.05 ) %>%
+    set_names( str_c(snm, "-dfx") )
+
+## Generate gsea sheets
+S2 <- map(GSEA, select, pathway, pval, FDR=padj, NES, size) %>%
+    map( filter, FDR < 0.05 ) %>% map( arrange, NES ) %>%
+    set_names( str_c(snm, "-gsea") )
+
+## Compose a summary sheet
+SM <- enframe(sid, "Name", "Sample") %>% unnest(Sample) %>%
+    inner_join(Y, by="Sample")
+
+c( list(Summary=SM), S1, S2 ) %>%
+    openxlsx::write.xlsx( file="test.xlsx" )
