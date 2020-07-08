@@ -2,15 +2,15 @@
 library( tidyverse )
 library( DRIAD )
 
-## wrangleROSMAP("./data/amp-ad/rosmap")
-## wrangleMSBB("./data/amp-ad/msbb")
+## wrangleROSMAP("../data/amp-ad/rosmap")
+## wrangleMSBB("../data/amp-ad/msbb")
 
 ## Identify individual datasets
-fn <- list(ROSMAP = "data/amp-ad/rosmap/rosmap.tsv.gz",
-           MSBB10 = "data/amp-ad/msbb/msbb10.tsv.gz",
-           MSBB22 = "data/amp-ad/msbb/msbb22.tsv.gz",
-           MSBB36 = "data/amp-ad/msbb/msbb36.tsv.gz",
-           MSBB44 = "data/amp-ad/msbb/msbb44.tsv.gz")
+fn <- list(ROSMAP = "../data/amp-ad/rosmap/rosmap.tsv.gz",
+           MSBB10 = "../data/amp-ad/msbb/msbb10.tsv.gz",
+           MSBB22 = "../data/amp-ad/msbb/msbb22.tsv.gz",
+           MSBB36 = "../data/amp-ad/msbb/msbb36.tsv.gz",
+           MSBB44 = "../data/amp-ad/msbb/msbb44.tsv.gz")
 
 ## Prediction tasks to consider
 XX <- enframe( fn, "Dataset", "Filename" ) %>%
@@ -24,7 +24,7 @@ XP <- XX %>% select( -Filename ) %>%
     mutate( Pairs = map(Data, preparePairs) )
 
 ## Load the DGL
-dgl <- scan("results/metformin-dgl.txt", what=character())
+dgl <- scan("../dfx/metformin-dgl.txt", what=character())
 f <- function(.x, .y ) evalGeneSets( list(Metformin=dgl), .x, .y, 100 )
 
 ## Evaluate the gene set across all datasets / tasks
@@ -36,4 +36,4 @@ RR <- XP %>%
 
 ## Finalize results and write to file
 RS <- RR %>% select( -Data, -Pairs ) %>% unnest( Result )
-saveRDS( RS, file="results/metformin-driad.RData" )
+saveRDS( RS, file="metformin-driad.rds" )

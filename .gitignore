@@ -1,8 +1,10 @@
 # Data
 *.csv
 *.RData
+*.rds
 *.gmt
 *.txt
+*.xlsx
 
 # History files
 .Rhistory
