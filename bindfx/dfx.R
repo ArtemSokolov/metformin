@@ -86,7 +86,7 @@ edger <- function(X1, Y1) {
 
 ## Apply differential gene expression to each dichotomy
 DFX <- map2( Xs, M, edger )
-saveRDS( DFX, file="results/dfx.rds" )
+saveRDS( DFX, file="dfx.rds" )
 
 ## Compose weight vectors for GSEA
 W <- map( DFX, with, set_names(logFC, Gene) )
@@ -97,7 +97,7 @@ c2cp <- DRIAD::read_gmt( "data/c2.cp.v7.0.symbols.gmt" )
 ## Run GSEA
 GSEA <- map(W, ~fgsea::fgsea(c2cp, .x, 1e5)) %>%
     map( as_tibble )
-saveRDS( GSEA, file="results/gsea.rds" )
+saveRDS( GSEA, file="gsea.rds" )
 
 ## Generate dfx sheets for an xlsx file
 snm <- map_chr( dich, str_flatten, "-" )
@@ -114,4 +114,4 @@ SM <- enframe(sid, "Name", "Sample") %>% unnest(Sample) %>%
     inner_join(Y, by="Sample")
 
 c( list(Summary=SM), S1, S2 ) %>%
-    openxlsx::write.xlsx( file="test.xlsx" )
+    openxlsx::write.xlsx( file="metformin.xlsx" )
