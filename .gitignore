@@ -6,6 +6,9 @@
 *.txt
 *.xlsx
 
+# Plots
+*.pdf
+
 # History files
 .Rhistory
 .Rapp.history

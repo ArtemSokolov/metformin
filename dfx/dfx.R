@@ -84,15 +84,12 @@ Xmet <- X[,rownames(Ymet)]
 DFX <- map2( Xdfx, Ydfx, edger )
 
 Rmet <- edger( Xmet, Ymet, cf=2:3 ) %>%
-    rename( logFC40 = 2, logFC10 = 3 ) %>%
+    rename( logFC10 = 2, logFC40 = 3 ) %>%
     arrange( Gene )
 
-write_csv( Rmet, "met-dfx.csv" )
+save( Xmet, Ymet, Rmet, file="met-dfx.RData" )
 
-## Z <- Rmet %>% filter(FDR < 0.001,
-##                      sign(logFC13) == sign(logFC12),
-##                      abs(logFC13) > abs(logFC12))
-
+## Gene set enrichment analysis
 W <- list( `12` = DFX$Met12, `13` = DFX$Met13, `Met` = Rmet ) %>%
     map( with, set_names(LR, Gene) )
 Res <- map( W, gsea, c2cp )
