@@ -15,6 +15,17 @@ edger <- function(X1, Y1, cf=2) {
         rownames_to_column( "Gene" ) %>% as_tibble
 }
 
+## Wrapper for GSEA
+gsea <- function(w, pw) {
+    fgsea::fgsea(pw, w, 1e5) %>% as_tibble() %>%
+        arrange( desc(abs(NES)) )
+}
+
+## NSE wrapper for column-to-rownames
+c2rn <- function(.df, .x) {
+    as.data.frame(.df) %>% column_to_rownames( str_c(ensym(.x)) )
+}
+
 ## Preliminaries
 synapser::synLogin()
 syn <- synExtra::synDownloader("/data/metformin", ifcollision="overwrite.local")
@@ -60,25 +71,31 @@ fsplit <- function( Z, name ) {
         map( as.data.frame ) %>% map( column_to_rownames, "Sample" )
 }
 
+## Isolate data slices
 Ydfx <- c(fsplit(filter( Y, !grepl("Gly", Treatment) ), "Met"),
           fsplit(filter( Y, !grepl("Met", Treatment) ), "Gly"))
 Xdfx <- map( Ydfx, ~X[,rownames(.x)] )
 
+Ymet <- Y %>% filter( !grepl("Gly", Treatment) ) %>%
+    mutate_at( "Treatment", as.factor ) %>% c2rn( Sample )
+Xmet <- X[,rownames(Ymet)]
+
 ## Compute differential gene expression
 DFX <- map2( Xdfx, Ydfx, edger )
 
-R12 <- DFX$Met12 %>% arrange( Gene )
-R23 <- DFX$Met23 %>% arrange( Gene )
-R13 <- DFX$Met13 %>% arrange( Gene )
+Rmet <- edger( Xmet, Ymet, cf=2:3 ) %>%
+    rename( logFC40 = 2, logFC10 = 3 ) %>%
+    arrange( Gene )
 
-RR <- inner_join(select(R12, -LR, -PValue),
-                 select(R13, -LR, -PValue),
-                 by="Gene", suffix=c(".12", ".13") )
+write_csv( Rmet, "met-dfx.csv" )
 
-Z <- RR %>% filter(FDR.12 < 0.05 | FDR.13 < 0.05,
-                   sign(logFC.13) == sign(logFC.12),
-                   abs(logFC.13) > abs(logFC.12))
+## Z <- Rmet %>% filter(FDR < 0.001,
+##                      sign(logFC13) == sign(logFC12),
+##                      abs(logFC13) > abs(logFC12))
 
-w <- with( R13, set_names( LR, Gene ) )
-res <- fgsea::fgsea(c2cp, w, 1e5) %>% as_tibble() %>%
-    arrange( desc(abs(NES)) )
+W <- list( `12` = DFX$Met12, `13` = DFX$Met13, `Met` = Rmet ) %>%
+    map( with, set_names(LR, Gene) )
+Res <- map( W, gsea, c2cp )
+
+map(Res, arrange, pval) %>%
+    map(select, -ES, -nMoreExtreme, -leadingEdge )
