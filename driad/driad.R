@@ -24,7 +24,7 @@ XP <- XX %>% select( -Filename ) %>%
     mutate( Pairs = map(Data, preparePairs) )
 
 ## Load the DGL
-dgl <- scan("../dfx/metformin-dgl.txt", what=character())
+dgl <- scan("../dfx/metformin-80.txt", what=character())
 f <- function(.x, .y ) evalGeneSets( list(Metformin=dgl), .x, .y, 100 )
 
 ## Evaluate the gene set across all datasets / tasks
@@ -36,4 +36,4 @@ RR <- XP %>%
 
 ## Finalize results and write to file
 RS <- RR %>% select( -Data, -Pairs ) %>% unnest( Result )
-saveRDS( RS, file="metformin-driad.rds" )
+saveRDS( RS, file="metformin80-driad.rds" )
