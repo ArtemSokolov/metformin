@@ -49,56 +49,67 @@ Yraw <- syn("syn21781943") %>% read_csv2 %>%
 ## Name cleanup
 ncu <- c("Glyb 10" = "Glyburide (10uM)",
          "Glyb 40" = "Glyburide (40uM)",
-         "Met 10" = "Metformin (10uM)",
-         "Met 40" = "Metformin (40uM)")
+         "Met 10"  = "Metformin (10uM)",
+         "Met 40"  = "Metformin (40uM)",
+         "control" = "Control")
 
 ## Isolate the slice of interest
 Y <- Yraw %>% select(-Well) %>%
-    filter( grepl("72hr", Treatment) ) %>%
-    mutate(Treatment = str_sub(Treatment, 1, -8)) %>%
+    mutate_at( "Treatment", str_replace, "24 hr", "24hr" ) %>%
+    filter( grepl("24hr", Treatment) | grepl("72hr", Treatment) ) %>%
+    mutate(Time      = str_sub(Treatment, -4),
+           Treatment = str_sub(Treatment, 1, -8)) %>%
     mutate_at( "Treatment", recode, !!!ncu )
-X <- Xraw %>% select( symbol, one_of(Y$Sample) ) %>%
-    as.data.frame %>% column_to_rownames( "symbol" )
+X <- Xraw %>% select( symbol, one_of(Y$Sample) ) %>% c2rn( symbol )
 
 ## Drop genes that have no variance across the wells
 X <- X[(pmap_dbl(X,max) - pmap_dbl(X,min)) > 0,]
 
 ## Compose the differential expression tasks
-fsplit <- function( Z, name ) {
-    list( -(7:9), -(4:6), -(1:3) ) %>%
-        set_names( map_chr(c("12", "13", "23"), ~str_c(name,.x)) ) %>%
-        map( ~Z[.x,] ) %>% map( mutate_at, "Treatment", as.factor ) %>%
-        map( as.data.frame ) %>% map( column_to_rownames, "Sample" )
+ftask <- function( Z, trt, tm ) {
+    Z %>% filter(grepl(trt, Treatment) |
+                 grepl("Control", Treatment),
+                 grepl(tm, Time) ) %>%
+        mutate_at( "Treatment", as.factor ) %>%
+        select( -Time ) %>% c2rn( Sample ) %>%
+        { set_names( list(.), str_c(trt, tm) ) }
 }
 
 ## Isolate data slices
-Ydfx <- c(fsplit(filter( Y, !grepl("Gly", Treatment) ), "Met"),
-          fsplit(filter( Y, !grepl("Met", Treatment) ), "Gly"))
+Ydfx <- c(ftask( Y, "Met", "24" ),
+          ftask( Y, "Met", "72" ),
+          ftask( Y, "Gly", "24" ),
+          ftask( Y, "Gly", "72" ))
 Xdfx <- map( Ydfx, ~X[,rownames(.x)] )
 
-Ymet <- Y %>% filter( !grepl("Gly", Treatment) ) %>%
-    mutate_at( "Treatment", as.factor ) %>% c2rn( Sample )
-Xmet <- X[,rownames(Ymet)]
-
 ## Compute differential gene expression
-DFX <- map2( Xdfx, Ydfx, edger )
+DFX <- map2( Xdfx, Ydfx, edger, cf=2:3 ) %>%
+    map( rename, logFC10=2, logFC40=3 )
 
-Rmet <- edger( Xmet, Ymet, cf=2:3 ) %>%
-    rename( logFC10 = 2, logFC40 = 3 ) %>%
-    arrange( Gene )
-
-save( Xmet, Ymet, Rmet, file="met-dfx.RData" )
-
-## Highlight of selected genes in 40uM vs. DMSO comparison
-gs <- c("FGF2", "FGF17", "KRAS", "NRAS", "FRS2")
-DFX$Met13 %>% filter( Gene %in% gs )
-Xdfx$Met13[gs,]
+save( Xdfx, Ydfx, DFX, file="all-dfx.RData" )
 
 ## Gene set enrichment analysis
-## W <- list( `12` = DFX$Met12, `13` = DFX$Met13, `Met` = Rmet ) %>%
-##     map( with, set_names(LR, Gene) )
-## Res <- map( W, gsea, c2cp )
+W <- map( DFX, with, set_names(LR, Gene) )
+EGS <- map( W, gsea, c2cp )
 
-## map(Res, arrange, pval) %>%
-##     map(select, -ES, -nMoreExtreme, -leadingEdge )
+map( EGS, select, -nMoreExtreme, -leadingEdge ) %>%
+    map( arrange, pval )
+save( EGS, file="all-gsea.RData" )
 
+## Filters to dose-dependent perturbations
+fdosedep <- function( Z ) {
+    Z %>% filter(sign(logFC40) == sign(logFC10),
+                 abs(logFC40) > abs(logFC10))
+}
+
+DDX <- map( DFX, fdosedep ) %>%
+    map( arrange, FDR ) %>%
+    map( slice, 1:80 )
+
+map( EGS, select, -leadingEdge, -nMoreExtreme ) %>%
+    map( arrange, pval )
+
+## IFN-gamma highlight
+ifg <- c2cp[["REACTOME_INTERFERON_GAMMA_SIGNALING"]]
+vifg <- DFX$Met24 %>% filter( Gene %in% ifg, FDR < 0.01 ) %>% pull(Gene)
+Xdfx$Met24[vifg,]
