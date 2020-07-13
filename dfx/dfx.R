@@ -89,10 +89,16 @@ Rmet <- edger( Xmet, Ymet, cf=2:3 ) %>%
 
 save( Xmet, Ymet, Rmet, file="met-dfx.RData" )
 
-## Gene set enrichment analysis
-W <- list( `12` = DFX$Met12, `13` = DFX$Met13, `Met` = Rmet ) %>%
-    map( with, set_names(LR, Gene) )
-Res <- map( W, gsea, c2cp )
+## Highlight of selected genes in 40uM vs. DMSO comparison
+gs <- c("FGF2", "FGF17", "KRAS", "NRAS", "FRS2")
+DFX$Met13 %>% filter( Gene %in% gs )
+Xdfx$Met13[gs,]
 
-map(Res, arrange, pval) %>%
-    map(select, -ES, -nMoreExtreme, -leadingEdge )
+## Gene set enrichment analysis
+## W <- list( `12` = DFX$Met12, `13` = DFX$Met13, `Met` = Rmet ) %>%
+##     map( with, set_names(LR, Gene) )
+## Res <- map( W, gsea, c2cp )
+
+## map(Res, arrange, pval) %>%
+##     map(select, -ES, -nMoreExtreme, -leadingEdge )
+
