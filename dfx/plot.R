@@ -53,4 +53,10 @@ gg <- ggplot( RX, aes(x=Comparison, y=GeneID, fill=logFC) ) +
 ggsave( "FigA.pdf", gg, width=9, height=7 )
 
 ## Save all differential gene expression as a supplementary table
-openxlsx::write.xlsx( file="Suppl-Table-A.xlsx" )
+openxlsx::write.xlsx( DFX, file="Suppl-Table-dfx.xlsx" )
+
+## Save top 10 gene sets enriched in each comparison to a suppl. table
+load( "all-gsea.RData" )
+EGS %>% map( select, pathway, pval, NES ) %>%
+    map( arrange, pval ) %>% map( slice, 1:10 ) %>%
+    openxlsx::write.xlsx( file="Suppl-Table-gsea.xlsx" )
