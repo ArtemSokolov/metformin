@@ -50,7 +50,7 @@ gg <- ggplot( RX, aes(x=Comparison, y=GeneID, fill=logFC) ) +
           strip.text  = element_text(size=12),
           panel.grid  = element_blank() )
 
-ggsave( "FigA.pdf", gg, width=9, height=7 )
+ggsave( "Fig-dfx.pdf", gg, width=9, height=7 )
 
 ## Save all differential gene expression as a supplementary table
 openxlsx::write.xlsx( DFX, file="Suppl-Table-dfx.xlsx" )
@@ -60,3 +60,32 @@ load( "all-gsea.RData" )
 EGS %>% map( select, pathway, pval, NES ) %>%
     map( arrange, pval ) %>% map( slice, 1:10 ) %>%
     openxlsx::write.xlsx( file="Suppl-Table-gsea.xlsx" )
+
+## Highlight ifn-g signaling
+c2cp <- DRIAD::read_gmt( "../data/c2.cp.v7.0.symbols.gmt" )
+ifng <- c2cp$REACTOME_INTERFERON_GAMMA_SIGNALING
+v <- DFX$Met24 %>% filter( Gene %in% ifng, FDR < 0.01 ) %>% pull(Gene)
+X <- Xdfx$Met24[v,] %>% rownames_to_column("Gene") %>% as_tibble
+Y <- Ydfx$Met24 %>% rownames_to_column("Sample") %>% as_tibble
+
+## Normalize relative to the median control
+RR <- X %>% mutate( Med = pmap_dbl(list(S31,S32,S33), lift_vd(median)) ) %>%
+    gather( Sample, Counts, -Gene, -Med ) %>%
+    inner_join( Y, by="Sample" ) %>%
+    mutate(logFC  = log(Counts / Med),
+           Sample = str_c(Sample, " ", Treatment))
+
+## Hierarchical clustering on rows
+library( seriation )
+DM <- RR %>% select( Gene, Sample, logFC ) %>% spread( Sample, logFC ) %>%
+    as.data.frame %>% column_to_rownames("Gene") %>% dist
+lvl <- hclust(DM) %>% reorder(DM) %>% dendextend::order.hclust() %>% labels(DM)[.]
+RR <- RR %>% mutate_at( "Gene", factor, levels=lvl )
+
+## Plot log fold change relative to median control
+ggifg <- ggplot( RR, aes(x=Sample, y=Gene, fill=logFC) ) +
+    theme_minimal() + geom_tile() +
+    scale_fill_gradientn( colors=pal, name="logFC", limits=c(-1.8, 1.8) ) +
+    theme(axis.text.x = element_text( angle=90, vjust=0.5, hjust=1 ),
+          panel.grid = element_blank() ) +
+    ggsave( "Suppl-Fig-IFNg.pdf", width=5, height=5 )
