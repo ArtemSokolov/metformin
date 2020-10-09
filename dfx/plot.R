@@ -20,7 +20,13 @@ lmt <- 2
 RX <- bind_rows( DDX, .id = "Treatment" ) %>%
     mutate(logFCD = logFC40 - logFC10,
            GeneID = str_c(Treatment, Gene)) %>%
-    arrange( logFCD ) %>%
+    arrange( logFCD )
+
+## Per Mark's request, distill the figure to top4 and bottom4
+RX4 <- RX %>%
+    group_by( Treatment ) %>%
+    slice( c(1:4, 37:40) ) %>%
+    ungroup() %>%
     mutate( GeneID = factor(GeneID, GeneID) ) %>%
     select( Treatment, Gene, GeneID, logFC10, logFC40 ) %>%
     gather( Comparison, logFCraw, logFC10, logFC40 ) %>%
@@ -40,9 +46,9 @@ RX <- bind_rows( DDX, .id = "Treatment" ) %>%
 flbl <- function( v ) {with(RX, set_names(Gene, GeneID))[v]}
 
 ## Plot as a faceted heatmap
-gg <- ggplot( RX, aes(x=Comparison, y=GeneID, fill=logFC) ) +
+gg <- ggplot( RX4, aes(x=Comparison, y=GeneID, fill=logFC) ) +
     theme_minimal() + geom_tile() +
-    geom_text( aes(label=lbl), data=filter(RX, abs(logFCraw) > 2), color="gold" ) +
+    geom_text( aes(label=lbl), data=filter(RX4, abs(logFCraw) > 2), color="gold" ) +
     facet_wrap( ~Treatment, ncol=4, scales="free_y" ) +
     scale_y_discrete( labels = flbl, name="Gene" ) +
     scale_fill_gradientn( colors=pal, name="logFC", limits=c(-lmt, lmt) ) +
@@ -50,7 +56,7 @@ gg <- ggplot( RX, aes(x=Comparison, y=GeneID, fill=logFC) ) +
           strip.text  = element_text(size=12),
           panel.grid  = element_blank() )
 
-ggsave( "Fig-dfx.pdf", gg, width=9, height=7 )
+ggsave( "Fig-dfx4.pdf", gg, width=9, height=3 )
 
 ## Save all differential gene expression as a supplementary table
 openxlsx::write.xlsx( DFX, file="Suppl-Table-dfx.xlsx" )
