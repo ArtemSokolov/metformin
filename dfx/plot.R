@@ -1,4 +1,6 @@
 library( tidyverse )
+library( grid )
+library( cowplot )
 
 load( "all-dfx.RData" )
 
@@ -31,13 +33,15 @@ RX4 <- RX %>%
     select( Treatment, Gene, GeneID, logFC10, logFC40 ) %>%
     gather( Comparison, logFCraw, logFC10, logFC40 ) %>%
     mutate_at( "Comparison", recode,
-              logFC10 = "10uM vs DMSO",
-              logFC40 = "40uM vs DMSO" ) %>%
+              logFC10 = "10uM",
+              logFC40 = "40uM" ) %>%
     mutate_at( "Treatment", recode,
-              Gly24 = "Glyburide 24h",
-              Gly72 = "Glyburide 72h",
-              Met24 = "Metformin 24h",
-              Met72 = "Metformin 72h" ) %>%
+              Gly24 = "  24h",
+              Gly72 = "  72h",
+              Met24 = "   24h",
+              Met72 = "   72h" ) %>%
+    mutate(Timepoint = str_sub(Treatment, -3),
+           Treatment = str_sub(Treatment, 1, -5)) %>%
     mutate( logFC = case_when(logFCraw > lmt ~ lmt,
                               logFCraw < -lmt ~ -lmt,
                               TRUE ~ logFCraw),
@@ -49,14 +53,29 @@ flbl <- function( v ) {with(RX, set_names(Gene, GeneID))[v]}
 gg <- ggplot( RX4, aes(x=Comparison, y=GeneID, fill=logFC) ) +
     theme_minimal() + geom_tile() +
     geom_text( aes(label=lbl), data=filter(RX4, abs(logFCraw) > 2), color="gold" ) +
-    facet_wrap( ~Treatment, ncol=4, scales="free_y" ) +
-    scale_y_discrete( labels = flbl, name="Gene" ) +
-    scale_fill_gradientn( colors=pal, name="logFC", limits=c(-lmt, lmt) ) +
-    theme(axis.text.x = element_text( angle=90, vjust=0.5, hjust=1 ),
+    facet_wrap( ~Treatment+Timepoint, scales="free_y", ncol=4 ) +
+    scale_y_discrete( labels = flbl, name="" ) +
+    xlab("Genes with greatest dose dependent increase or decrease relative to DMSO") +
+    scale_fill_gradientn( colors=pal, name="Log Fold\nChange", limits=c(-lmt, lmt) ) +
+    theme(axis.text = element_text(face="bold"),
           strip.text  = element_text(size=12),
           panel.grid  = element_blank() )
 
-ggsave( "Fig-dfx4.pdf", gg, width=9, height=3 )
+ffacet <- function( text )
+    {
+        ggplot() + theme_void() +
+            geom_line( aes(x=x, y=y), data=data.frame(x=c(0,1), y=c(0.75,0.75)) ) +
+            geom_label( aes(x=x, y=y, label=txt),
+                       data=data.frame(x=0.5, y=0.75, txt=text),
+                       label.size = NA, size=5 ) +
+            scale_y_continuous( limits=c(0,1) )
+    }
+
+ggg <- ggplotGrob(gg) %>%
+    gtable::gtable_add_grob( ggplotGrob(ffacet("Glyburide")), t=7, l=5, r=9 ) %>%
+    gtable::gtable_add_grob( ggplotGrob(ffacet("Metformin")), t=7, l=13, r=17 )
+
+ggsave( "Fig-dfx4.pdf", ggg, width=9, height=3 )
 
 ## Save all differential gene expression as a supplementary table
 openxlsx::write.xlsx( DFX, file="Suppl-Table-dfx.xlsx" )
