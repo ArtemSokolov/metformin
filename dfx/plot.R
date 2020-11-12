@@ -54,12 +54,13 @@ gg <- ggplot( RX4, aes(x=Comparison, y=GeneID, fill=logFC) ) +
     theme_minimal() + geom_tile() +
     geom_text( aes(label=lbl), data=filter(RX4, abs(logFCraw) > 2), color="gold" ) +
     facet_wrap( ~Treatment+Timepoint, scales="free_y", ncol=4 ) +
-    scale_y_discrete( labels = flbl, name="" ) +
-    xlab("Genes with greatest dose dependent increase or decrease relative to DMSO") +
+    scale_y_discrete( labels = flbl, name="" ) + xlab("") +
+    ggtitle("Genes with greatest dose-dependent increase or decrease relative to DMSO") +
     scale_fill_gradientn( colors=pal, name="Log Fold\nChange", limits=c(-lmt, lmt) ) +
     theme(axis.text = element_text(face="bold"),
           strip.text  = element_text(size=12),
-          panel.grid  = element_blank() )
+          panel.grid  = element_blank(),
+          plot.title = element_text(hjust = 0.5))
 
 ffacet <- function( text )
     {
